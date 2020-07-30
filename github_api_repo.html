@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+</head>
+<body>
+    <div id="app">
+        <el-row style="margin-bottom: 24px;">
+            <el-input placeholder="Please input" v-model="input">
+                <template slot="prepend">Search for git user repo!</template>
+                <el-button slot="append" icon="el-icon-search" @click="clearSearch();searchUser();"></el-button>
+            </el-input>
+        </el-row>
+        <div class="block" v-loading="loading">
+            <span v-if="errMsg !== ''">{{ errMsg }}</span>
+            <el-timeline v-else :reverse="reverse" >
+                <el-timeline-item
+                  v-for="(repo, index) in repos"
+                  :key="index"
+                  :timestamp="convertDateFormat(repo.created_at)"
+                  placement="top">
+                  <el-card>
+                    <el-link :href="repo.html_url">{{repo.name}}</el-link>
+                    <i class="el-icon-star-off"></i>
+                    <span>{{repo.stargazers_count}}</span>
+                  </el-card>
+                </el-timeline-item>
+            </el-timeline>
+        </div>
+    </div>
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+    new Vue({
+        el: '#app',
+        data:{
+            input: '',
+            reverse: false,
+            repos: [],
+            perPage: 10,
+            sort: 'created',
+            page: 1,
+            bottom: false,
+            errMsg: '',
+            loading: false
+        },
+        methods:{
+            searchUser(){
+                if (this.bottom) return;
+                this.loading = true;
+                const direction = this.reverse? 'asc':'desc';
+                axios.get(`https://api.github.com/users/${this.input}/repos?per_page=${this.perPage}&sort=${this.sort}&page=${this.page}&direction=${direction}`)
+                .then(res => {
+                    this.repos = this.repos.concat(res.data);
+                    res.data.length < 10? this.bottom = true: this.page++;
+                })
+                .catch(err => {
+                    this.errMsg = err.response.data.message;
+                })
+                this.loading = false;
+            },
+            scroll(){
+                window.onscroll = () => {
+                    let bottomOfWindow = Math.max(window.pageYOffset, document.documentElement.scrollTop, document.body.scrollTop) + window.innerHeight === document.documentElement.offsetHeight;
+                    if (bottomOfWindow) {
+                        this.searchUser();
+                    }
+                }
+
+            },
+            clearSearch(){
+                this.errMsg = '';
+                this.page = 1;
+                this.repos = [];
+            },
+            convertDateFormat(timestamp){
+                const date = new Date(timestamp);
+                let day = date.getDate();
+                if (day < 10) day = '0' + day;
+                let month = date.getMonth() + 1;
+                if (month < 10) month = '0' + month;
+                console.log(date);
+                console.log("formatted: ", date.getFullYear(), date.getMonth(), date.getDate())
+                return date.getFullYear() + '-' + month + '-' + day;
+            }
+        },
+        mounted(){
+            this.scroll();
+        }
+    })
+</script>
+<style>
+</style>
+</html>
+
