@@ -1,44 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
 </head>
 <body>
-    <div id="app">
-        <el-row style="margin-bottom: 24px;">
-            <el-input placeholder="Please input" v-model="input">
-                <template slot="prepend">Search for git user repo!</template>
-                <el-button slot="append" icon="el-icon-search" @click="clearSearch();searchUser();"></el-button>
-            </el-input>
-        </el-row>
-        <div class="block" v-loading="loading">
-            <span v-if="errMsg !== ''">{{ errMsg }}</span>
-            <el-timeline v-else :reverse="reverse" >
-                <el-timeline-item
-                  v-for="(repo, index) in repos"
-                  :key="index"
-                  :timestamp="convertDateFormat(repo.created_at)"
-                  placement="top">
-                  <el-card>
-                    <el-link :href="repo.html_url">{{repo.name}}</el-link>
-                    <i class="el-icon-star-off"></i>
-                    <span>{{repo.stargazers_count}}</span>
-                  </el-card>
-                </el-timeline-item>
-            </el-timeline>
-        </div>
-    </div>
+    <v-app id="app">
+        <v-app-bar app prominent>
+            <v-row no-gutters style="align-self: center;">
+                <v-text-field 
+                    label="Search for git user repo" 
+                    placeholder="Please input" 
+                    v-model="input"
+                    append-outer-icon="mdi-send"
+                    @click:append-outer="clearSearch();searchUser();"
+                >
+                </v-text-field>
+            </v-row>
+        </v-app-bar>
+        <v-main>
+            <v-container fluid>
+                <span v-if="errMsg !== ''">{{ errMsg }}</span>
+                <v-timeline v-else-if="repos.length > 0">
+                    <v-timeline-item
+                    v-for="(repo, index) in repos"
+                    :key="index"
+                    small
+                    right
+                    >
+                    <span slot="opposite">{{ convertDateFormat(repo.created_at) }}</span>
+                    <v-card >
+                        <v-card-title :href="repo.html_url">
+                            <a :href="repo.html_url">{{repo.name}}</a>
+                            <v-icon>mdi-star-outline</v-icon>
+                            <span>{{repo.stargazers_count}}</span>
+                        </v-card-title>
+                        <v-card-text>
+                            {{repo.description}}
+                        </v-card-text>
+                    </v-card>
+                    </v-timeline-item>
+                </v-timeline>
+            </v-container>
+        </v-main>
+    </v-app>
 </body>
 
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script>
     new Vue({
         el: '#app',
+        vuetify: new Vuetify(),
         data:{
             input: '',
-            reverse: false,
+            direction: 'desc',
             repos: [],
             perPage: 10,
             sort: 'created',
@@ -51,9 +70,12 @@
             searchUser(){
                 if (this.bottom) return;
                 this.loading = true;
-                const direction = this.reverse? 'asc':'desc';
-                axios.get(`https://api.github.com/users/${this.input}/repos?per_page=${this.perPage}&sort=${this.sort}&page=${this.page}&direction=${direction}`)
+                axios.get(`https://api.github.com/users/${this.input}/repos?per_page=${this.perPage}&sort=${this.sort}&page=${this.page}&direction=${this.direction}`)
                 .then(res => {
+                    if (this.page === 1 && res.data.length === 0) {
+                        this.errMsg = 'This user has no repository.';
+                        return;
+                    }
                     this.repos = this.repos.concat(res.data);
                     res.data.length < 10? this.bottom = true: this.page++;
                 })
@@ -75,6 +97,7 @@
                 this.errMsg = '';
                 this.page = 1;
                 this.repos = [];
+                this.bottom = false;
             },
             convertDateFormat(timestamp){
                 const date = new Date(timestamp);
@@ -82,8 +105,6 @@
                 if (day < 10) day = '0' + day;
                 let month = date.getMonth() + 1;
                 if (month < 10) month = '0' + month;
-                console.log(date);
-                console.log("formatted: ", date.getFullYear(), date.getMonth(), date.getDate())
                 return date.getFullYear() + '-' + month + '-' + day;
             }
         },
@@ -92,7 +113,7 @@
         }
     })
 </script>
-<style>
+<style> 
 </style>
 </html>
 
